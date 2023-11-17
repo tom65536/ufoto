@@ -12,3 +12,9 @@ dynamic = ["version", "description"]
 
 [project.urls]
 Home = "https://github.com/tom65536/ufoto"
+
+[project.optional-dependencies]
+test = [
+        "pytest>=2.7.3",
+        "pytest-cov",
+]

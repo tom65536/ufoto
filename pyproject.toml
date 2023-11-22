@@ -10,11 +10,19 @@ license = {file = "LICENSE"}
 classifiers = ["License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)"]
 dynamic = ["version", "description"]
 
+dependencies = [
+  "click>=8.0,<9",
+  "toml",
+  "PyYAML>=6.0,<7",
+  "cbor2>=5.5,<6"
+]
+
 [project.urls]
 Home = "https://github.com/tom65536/ufoto"
 
 [project.optional-dependencies]
 test = [
-        "pytest>=2.7.3",
+        "pytest>=7.4,<8",
         "pytest-cov",
+        "pytest-click>=1.1,<2"
 ]

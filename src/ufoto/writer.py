@@ -1,13 +1,14 @@
 """Methods for writing the model."""
 import enum
 import json
+from pathlib import Path
 from typing import (
     Any,
-    Callable,
     Dict,
     IO,
     Mapping,
-    Sequence
+    Sequence,
+    Union,
 )
 
 import cbor2
@@ -16,50 +17,70 @@ import yaml
 
 
 class OutputFormat(enum.Enum):
-  """The implemented formats for output."""
-  CBOR = enum.auto()
-  JSON = enum.auto()
-  TOML= enum.auto()
-  YAML = enum.auto()
-
-def get_writer(
-    fmt: OutputFormat
-) -> Callable[[IO, Mapping[str, Any]], None]:
   """
-  Return a writer serializing to the given format.
+  The implemented formats for output.
 
-  The writer takes a structure and a file like
-  object as arguments.
-
-  :param fmt: the output format
-  :type fmt: OutputFormat
-  :return: the writer
-  :rtype: Callable[[Mapping[str, Any], IO], None]
+  :param mode: the file mode for opening a file for writing
+  :type mode: str
+  :param dump_fn: method for dumping to a stream in the given format
+  :type dump_fn: Callable[[IO, Mapping[str, Any]], None]
+  :param suffixes: List of file suffixes mapped to this type
+  :type suffixes: Sequence[str]
   """
-  if fmt == OutputFormat.CBOR:
-    return cbor2.dump
-  if fmt == OutputFormat.JSON:
-    return json.dump
-  if fmt == OutputFormat.YAML:
-    return yaml.dump
-  if fmt == OutputFormat.TOML:
-    return toml.dump
-  raise NotImplementedError()
+  CBOR = ('wb', cbor.dump, ('.cbor', '.cbr'))
+  JSON = ('w', json.dump, ('.json', '.jsn'))
+  TOML= ('w', toml.dump, ('.toml', '.tml'))
+  YAML = ('w', yaml.dump, ('.yaml', '.yml'))
 
-def get_mode(
-    fmt: OutputFormat
-) -> str:
-  """
-  Return the file mode required for the given format.
+  def __init__(self,
+      mode: str,
+      dump_fn: Callable[[IO, Mapping[str, Any]], None],
+      suffixes: Sequence[str],
+  ) -> None:
+    """Initialize a new instance."""
+    self._mode = mode
+    self._dump_fn = dump_fn
+    self._suffixes = suffixes
 
-  The mode may be ``'b'`` for binary or ``''``
-  for text mode.
+  @property
+  def mode(self) -> str:
+    """Return the file mode for opening a file for writing."""
+    return self._mode
 
-  :param fmt: the output format
-  :type fmt: OutputFormat
-  :return:  ``'b'`` for binary or ``''`` for text mode
-  :rtype: str
-  """
-  if fmt == OutputFormat.CBOR:
-    return 'b'
-  return ''
+  def get_default_suffix(self) -> str:
+    """Return a default file suffix."""
+    return self._suffixes[0]
+
+  @property
+  def suffixes(self) -> Sequence[str]:
+    """Return the suffixes associated with this type."""
+
+  def dump(self, stream: IO, structure: Mapping[str, Any]) -> None:
+    """
+    Write a given ``structure`` to a ``stream`` in serialized form.
+
+    :param stream: the stream to write to
+    :type stream: IO
+    :param structure: the structure to be written in serialized form
+    :type structure: Dict[str, Any]
+    """
+    self._dump_fn(stream, structure)
+
+  @staticmethod
+  def for_file(path_like: Union[str, Path]) -> 'OutputFormat':
+    """
+    Obtain an output format for a given path like object.
+
+    :param path_like: a string or path object pointing to a file name
+    :type path_like: Union[str, Path]
+    :return: the associated output format or `OutputFormat.JSON` if no type is associated at all.
+    :rtype: OutputFormat
+    """
+    path = Path(str(path_like))
+    suffix = path.suffix.lower()
+
+    for output_format in OutputFormat:
+      if suffix in output_format.suffixes:
+        return output_format
+    return OutpuFormat.JSON
+
